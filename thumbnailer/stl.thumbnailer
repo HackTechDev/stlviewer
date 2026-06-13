@@ -1,0 +1,4 @@
+[Thumbnailer Entry]
+TryExec=stl-thumbnailer
+Exec=stl-thumbnailer %i %o %s
+MimeTypes=model/stl;model/x.stl-ascii;model/x.stl-binary;application/sla;application/vnd.ms-pki.stl;

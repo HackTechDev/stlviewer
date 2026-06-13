@@ -358,15 +358,59 @@ static void create_window(AppData *d)
     gtk_window_set_title(GTK_WINDOW(d->window), "STL Viewer");
     gtk_window_set_default_size(GTK_WINDOW(d->window), 1200, 750);
 
-    /* Accelerators */
     GtkAccelGroup *ag = gtk_accel_group_new();
     gtk_window_add_accel_group(GTK_WINDOW(d->window), ag);
 
-    /* Main layout */
-    GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_container_add(GTK_CONTAINER(d->window), hbox);
+    /* Root layout: vbox holds menubar / content / statusbar */
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add(GTK_CONTAINER(d->window), vbox);
 
-    /* OpenGL area */
+    /* --- Menu bar (built first, packed first) --- */
+    GtkWidget *menubar = gtk_menu_bar_new();
+
+    GtkWidget *file_item = gtk_menu_item_new_with_mnemonic("_Fichier");
+    GtkWidget *file_menu = gtk_menu_new();
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_item), file_menu);
+
+    GtkWidget *mi_open = gtk_menu_item_new_with_mnemonic("_Ouvrir…");
+    gtk_widget_add_accelerator(mi_open, "activate", ag,
+        GDK_KEY_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    g_signal_connect(mi_open, "activate", G_CALLBACK(on_open), d);
+    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), mi_open);
+    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu),
+        gtk_separator_menu_item_new());
+
+    GtkWidget *mi_quit = gtk_menu_item_new_with_mnemonic("_Quitter");
+    gtk_widget_add_accelerator(mi_quit, "activate", ag,
+        GDK_KEY_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    g_signal_connect_swapped(mi_quit, "activate",
+        G_CALLBACK(gtk_widget_destroy), d->window);
+    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), mi_quit);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menubar), file_item);
+
+    GtkWidget *view_item = gtk_menu_item_new_with_mnemonic("_Vue");
+    GtkWidget *view_menu = gtk_menu_new();
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(view_item), view_menu);
+
+    GtkWidget *mi_reset = gtk_menu_item_new_with_label("Réinitialiser la vue");
+    gtk_widget_add_accelerator(mi_reset, "activate", ag,
+        GDK_KEY_r, 0, GTK_ACCEL_VISIBLE);
+    g_signal_connect(mi_reset, "activate", G_CALLBACK(on_reset_view), d);
+    gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), mi_reset);
+
+    GtkWidget *mi_wire = gtk_check_menu_item_new_with_label("Fil de fer");
+    gtk_widget_add_accelerator(mi_wire, "activate", ag,
+        GDK_KEY_w, 0, GTK_ACCEL_VISIBLE);
+    g_signal_connect(mi_wire, "toggled", G_CALLBACK(on_toggle_wireframe), d);
+    gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), mi_wire);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menubar), view_item);
+
+    gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
+
+    /* --- Main content area: GL view + separator + side panel --- */
+    GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 0);
+
     d->gl_area = gtk_gl_area_new();
     gtk_gl_area_set_required_version(GTK_GL_AREA(d->gl_area), 3, 3);
     gtk_gl_area_set_has_depth_buffer(GTK_GL_AREA(d->gl_area), TRUE);
@@ -391,67 +435,17 @@ static void create_window(AppData *d)
 
     gtk_box_pack_start(GTK_BOX(hbox), d->gl_area, TRUE, TRUE, 0);
 
-    /* Side panel */
     GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
     gtk_box_pack_start(GTK_BOX(hbox), sep, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(hbox), make_side_panel(d), FALSE, FALSE, 0);
 
-    /* Menu bar */
-    GtkWidget *menubar = gtk_menu_bar_new();
-
-    /* File menu */
-    GtkWidget *file_item = gtk_menu_item_new_with_mnemonic("_Fichier");
-    GtkWidget *file_menu = gtk_menu_new();
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_item), file_menu);
-
-    GtkWidget *mi_open = gtk_menu_item_new_with_mnemonic("_Ouvrir…");
-    gtk_widget_add_accelerator(mi_open, "activate", ag,
-        GDK_KEY_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-    g_signal_connect(mi_open, "activate", G_CALLBACK(on_open), d);
-    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), mi_open);
-    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu),
-        gtk_separator_menu_item_new());
-
-    GtkWidget *mi_quit = gtk_menu_item_new_with_mnemonic("_Quitter");
-    gtk_widget_add_accelerator(mi_quit, "activate", ag,
-        GDK_KEY_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-    g_signal_connect_swapped(mi_quit, "activate",
-        G_CALLBACK(gtk_widget_destroy), d->window);
-    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), mi_quit);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menubar), file_item);
-
-    /* View menu */
-    GtkWidget *view_item = gtk_menu_item_new_with_mnemonic("_Vue");
-    GtkWidget *view_menu = gtk_menu_new();
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(view_item), view_menu);
-
-    GtkWidget *mi_reset = gtk_menu_item_new_with_label("Réinitialiser la vue");
-    gtk_widget_add_accelerator(mi_reset, "activate", ag,
-        GDK_KEY_r, 0, GTK_ACCEL_VISIBLE);
-    g_signal_connect(mi_reset, "activate", G_CALLBACK(on_reset_view), d);
-    gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), mi_reset);
-
-    GtkWidget *mi_wire = gtk_check_menu_item_new_with_label("Fil de fer");
-    gtk_widget_add_accelerator(mi_wire, "activate", ag,
-        GDK_KEY_w, 0, GTK_ACCEL_VISIBLE);
-    g_signal_connect(mi_wire, "toggled", G_CALLBACK(on_toggle_wireframe), d);
-    gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), mi_wire);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menubar), view_item);
-
-    /* Pack menubar above the hbox */
-    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_remove(GTK_CONTAINER(d->window), hbox);
-    gtk_container_add(GTK_CONTAINER(d->window), vbox);
-    gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 0);
-
-    /* Status bar */
+    /* --- Status bar --- */
     GtkWidget *sb = gtk_statusbar_new();
     gtk_box_pack_end(GTK_BOX(vbox), sb, FALSE, FALSE, 0);
     gtk_statusbar_push(GTK_STATUSBAR(sb), 0,
         "Ouvrez un fichier STL via Fichier › Ouvrir…");
 
-    /* Drag-and-drop */
+    /* --- Drag-and-drop --- */
     static GtkTargetEntry dnd_targets[] = {
         { (gchar*)"text/uri-list", 0, 0 }
     };

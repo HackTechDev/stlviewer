@@ -35,3 +35,5 @@ target_link_libraries(stlviewer PRIVATE
 )
 
 install(TARGETS stlviewer RUNTIME DESTINATION bin)
+
+add_subdirectory(thumbnailer)
