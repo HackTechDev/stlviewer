@@ -1,8 +1,9 @@
 # STL Viewer
 
 Visionneuse de fichiers 3D au format STL disponible en deux versions : Python/PyQt5 et C/GTK3.
+Inclut également un générateur de vignettes pour les explorateurs de fichiers KDE et GNOME.
 
-## Fonctionnalités
+## Fonctionnalités du viewer
 
 - Chargement des fichiers STL **ASCII** et **binaire** (détection automatique)
 - Rendu 3D avec éclairage **Phong** (deux sources lumineuses)
@@ -88,17 +89,71 @@ cmake --build build --parallel
 
 ---
 
+## Générateur de vignettes (KDE / GNOME)
+
+![OSMesa](https://img.shields.io/badge/OSMesa-off--screen-blue)
+![FreeDesktop](https://img.shields.io/badge/FreeDesktop-thumbnail_spec-green)
+
+`stl-thumbnailer` génère des vignettes PNG conformes à la
+[spécification FreeDesktop](https://specifications.freedesktop.org/thumbnail-spec/latest/)
+pour les explorateurs **Dolphin (KDE)** et **Nautilus (GNOME)**.
+
+Il utilise OSMesa (rendu OpenGL sans affichage) et intègre les métadonnées
+`Thumb::URI` et `Thumb::MTime` requises dans le fichier PNG.
+
+### Prérequis supplémentaires
+
+```bash
+sudo apt install libosmesa6-dev
+```
+
+### Compiler et installer
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+sudo cmake --install build   # installe stl-thumbnailer + stl.thumbnailer
+```
+
+### Utilisation en ligne de commande
+
+```bash
+stl-thumbnailer fichier.stl vignette.png [taille]
+# Exemple : vignette 256×256
+stl-thumbnailer objet.stl /tmp/thumb.png 256
+```
+
+### Activer dans l'explorateur de fichiers
+
+Après `cmake --install`, forcer la mise à jour de la base MIME :
+
+```bash
+update-mime-database /usr/share/mime
+```
+
+Redémarrer l'explorateur de fichiers. Les vignettes apparaîtront automatiquement
+pour tous les fichiers `.stl`.
+
+---
+
 ## Structure du projet
 
 ```
 STLVIEWER/
-├── main.py              # Version Python (PyQt5 + OpenGL 2.1)
-├── requirements.txt     # Dépendances Python
-├── CMakeLists.txt       # Build C
-└── src/
-    ├── main.c           # Point d'entrée
-    ├── math3d.h         # Bibliothèque mathématique (mat4, vec3)
-    ├── stl.h / stl.c    # Parser STL ASCII + binaire
-    ├── renderer.h / renderer.c  # Rendu OpenGL 3.3 (shaders Phong)
-    └── app.h / app.c    # Fenêtre GTK3 + GtkGLArea
+├── main.py                      # Version Python (PyQt5 + OpenGL 2.1)
+├── requirements.txt             # Dépendances Python
+├── CMakeLists.txt               # Build C (viewer + thumbnailer)
+├── src/
+│   ├── main.c                   # Point d'entrée du viewer
+│   ├── math3d.h                 # Bibliothèque mathématique (mat4, vec3)
+│   ├── stl.h / stl.c            # Parser STL ASCII + binaire (partagé)
+│   ├── renderer.h / renderer.c  # Rendu OpenGL 3.3 (shaders Phong)
+│   └── app.h / app.c            # Fenêtre GTK3 + GtkGLArea
+└── thumbnailer/
+    ├── CMakeLists.txt           # Build du thumbnailer
+    ├── stl.thumbnailer          # Enregistrement GNOME/KDE
+    └── src/
+        ├── main.c               # Point d'entrée du thumbnailer
+        ├── render.h / render.c  # Rendu off-screen OSMesa
+        └── png_write.h / png_write.c  # Export PNG + métadonnées FreeDesktop
 ```
